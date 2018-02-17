@@ -1,6 +1,6 @@
 {
   "name": "hermione-tabs-closer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "plugin for hermione which closes opened tabs from previous tests in a browser",
   "main": "index.js",
   "scripts": {
