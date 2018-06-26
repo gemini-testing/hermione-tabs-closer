@@ -4,8 +4,11 @@ const Promise = require('bluebird');
 const parseConfig = require('./config');
 
 module.exports = (hermione, opts = {}) => {
-    const pluginConfig = parseConfig(opts);
+    if (!hermione.isWorker()) {
+        return;
+    }
 
+    const pluginConfig = parseConfig(opts);
     if (!pluginConfig.enabled) {
         return;
     }
@@ -35,11 +38,13 @@ module.exports = (hermione, opts = {}) => {
         return pluginConfig.browsers.test(browserId) && browserConf.testsPerSession !== 1;
     }
 
-    hermione.on(hermione.events.AFTER_FILE_READ, (data) => {
-        data.suite.beforeEach(function() {
-            return shouldClose(data.browser)
-                ? closeTabs(this.browser)
-                : this.browser;
+    hermione.on(hermione.events.AFTER_TESTS_READ, (collection) => {
+        collection.eachRootSuite((root, browserId) => {
+            if (shouldClose(browserId)) {
+                root.beforeEach(function() {
+                    return closeTabs(this.browser);
+                });
+            }
         });
     });
 };
