@@ -3,7 +3,7 @@
 const plugin = require('../');
 const EventEmitter = require('events');
 
-const events = {AFTER_FILE_READ: 'after_file_read'};
+const events = {AFTER_TESTS_READ: 'after_tests_read'};
 
 describe('hermione tabs closer', () => {
     const sandbox = sinon.sandbox.create();
@@ -13,6 +13,7 @@ describe('hermione tabs closer', () => {
 
         hermione.events = events;
         hermione.config = config || {forBrowser: () => ({testsPerSession: 10})};
+        hermione.isWorker = () => true;
 
         return hermione;
     };
@@ -25,75 +26,61 @@ describe('hermione tabs closer', () => {
         };
     };
 
-    it('should close all opened tabs except last tab', () => {
-        let cb;
-        const data = {
-            suite: {
-                beforeEach: (fn) => {
-                    cb = fn;
-                    return fn.bind({browser: {}});
-                }
-            }
-        };
+    it('should do nothing in master process', () => {
         const hermione = mkHermioneStub();
+        hermione.isWorker = () => false;
 
         plugin(hermione);
-        hermione.emit(events.AFTER_FILE_READ, data);
-        const browser = mkBrowser();
 
-        return cb.call({browser})
-            .then(() => {
-                assert.calledWith(browser.switchTab, 'tab1');
-                assert.calledWith(browser.close, 'tab2');
-                assert.calledWith(browser.close, 'tab3');
-                assert.neverCalledWith(browser.close, 'tab1');
-            });
+        const eachRootSuite = sinon.spy().named('eachRootSuite');
+        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite});
+
+        assert.notCalled(eachRootSuite);
     });
 
-    it('should not close tabs for browsers which not match to RegExp', () => {
-        let cb;
-        const data = {
-            suite: {
-                beforeEach: (fn) => {
-                    cb = fn;
-                    return fn.bind({browser: {}});
-                }
-            },
-            browser: 'bro1'
-        };
+    it('should not add hook for browsers which not match to RegExp', () => {
         const hermione = mkHermioneStub();
-
         plugin(hermione, {browsers: /bro2/});
-        hermione.emit(events.AFTER_FILE_READ, data);
 
-        const getTabIds = sandbox.stub();
-        const browser = Promise.resolve({getTabIds});
+        const suite = {beforeEach: sinon.spy().named('beforeEach')};
+        hermione.emit(events.AFTER_TESTS_READ, {
+            eachRootSuite: (cb) => cb(suite, 'bro1')
+        });
 
-        return cb.call({browser})
-            .then(() => assert.notCalled(getTabIds));
+        assert.notCalled(suite.beforeEach);
     });
 
-    it('should not close tabs for browsers with one test per session', () => {
-        let cb;
-        const data = {
-            suite: {
-                beforeEach: (fn) => {
-                    cb = fn;
-                    return fn.bind({browser: {}});
-                }
-            },
-            browser: 'bro1'
-        };
+    it('should not add hook for browsers with one test per session', () => {
         const hermione = mkHermioneStub({
             forBrowser: sandbox.stub().withArgs('bro1').returns({testsPerSession: 1})
         });
 
         plugin(hermione);
-        hermione.emit(events.AFTER_FILE_READ, data);
 
+        const suite = {beforeEach: sinon.spy().named('beforeEach')};
+        hermione.emit(events.AFTER_TESTS_READ, {
+            eachRootSuite: (cb) => cb(suite, 'bro1')
+        });
+
+        assert.notCalled(suite.beforeEach);
+    });
+
+    it('should close all opened tabs except last tab', async () => {
+        const hermione = mkHermioneStub();
+        plugin(hermione);
+
+        const suite = {beforeEach: sinon.spy().named('beforeEach')};
         const browser = mkBrowser();
+        hermione.emit(events.AFTER_TESTS_READ, {
+            eachRootSuite: (cb) => cb(suite, browser)
+        });
 
-        return cb.call({browser: Promise.resolve(browser)})
-            .then(() => assert.notCalled(browser.getTabIds));
+        const beforeEachHook = suite.beforeEach.lastCall.args[0];
+        await beforeEachHook.call({browser});
+
+        assert.calledWith(browser.switchTab, 'tab1');
+        assert.calledWith(browser.close, 'tab2');
+        assert.calledWith(browser.close, 'tab3');
+        assert.neverCalledWith(browser.close, 'tab1');
     });
 });
