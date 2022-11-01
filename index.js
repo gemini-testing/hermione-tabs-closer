@@ -13,23 +13,20 @@ module.exports = (hermione, opts = {}) => {
         return;
     }
 
-    function closeTabs(browser) {
-        let tabIds;
+    async function closeTabs(browser) {
+        const tabIds = await browser.getWindowHandles();
 
-        return browser
-            .getTabIds()
-            .then((ids) => {
-                tabIds = ids;
+        await browser.switchToWindow(tabIds[0]);
+        
+        return Promise.mapSeries(tabIds, async (id, ind) => {
+            if (ind === tabIds.length - 1) {
+                return browser;
+            }
 
-                return browser.switchTab(tabIds[0]);
-            })
-            .then(() => {
-                return Promise.mapSeries(tabIds, (id, ind) => {
-                    return (ind === tabIds.length - 1)
-                        ? browser
-                        : browser.close(tabIds[ind + 1]);
-                });
-            });
+            await browser.closeWindow();
+
+            return browser.switchToWindow(tabIds[ind + 1]);
+        });
     }
 
     function shouldClose(browserId) {

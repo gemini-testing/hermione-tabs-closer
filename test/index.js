@@ -20,9 +20,9 @@ describe('hermione tabs closer', () => {
 
     const mkBrowser = () => {
         return {
-            switchTab: sandbox.stub().resolves(),
-            getTabIds: sandbox.stub().resolves(['tab1', 'tab2', 'tab3']),
-            close: sandbox.stub().resolves()
+            switchToWindow: sandbox.stub().resolves(),
+            getWindowHandles: sandbox.stub().resolves(['tab1', 'tab2', 'tab3']),
+            closeWindow: sandbox.stub().resolves()
         };
     };
 
@@ -78,9 +78,7 @@ describe('hermione tabs closer', () => {
         const beforeEachHook = suite.beforeEach.lastCall.args[0];
         await beforeEachHook.call({browser});
 
-        assert.calledWith(browser.switchTab, 'tab1');
-        assert.calledWith(browser.close, 'tab2');
-        assert.calledWith(browser.close, 'tab3');
-        assert.neverCalledWith(browser.close, 'tab1');
+        assert.match(browser.closeWindow.callCount, 2);
+        assert.match(browser.switchToWindow.args [['tab1'], ['tab2'], ['tab3']]);
     });
 });

@@ -28,5 +28,8 @@
     "eslint-config-gemini-testing": "^2.7.0",
     "mocha": "^2.4.5",
     "sinon": "^2.3.8"
+  },
+  "peerDependencies": {
+    "hermione": ">=4.0.0"
   }
 }
