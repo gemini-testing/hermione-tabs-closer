@@ -4,7 +4,8 @@
   "description": "plugin for hermione which closes opened tabs from previous tests in a browser",
   "main": "index.js",
   "scripts": {
-    "test": "mocha",
+    "test": "npm run test-unit && npm run lint",
+    "test-unit": "mocha test/ --config test/.mocharc.js",
     "lint": "eslint ."
   },
   "repository": {
