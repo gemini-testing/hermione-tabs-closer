@@ -17,7 +17,7 @@ module.exports = (hermione, opts = {}) => {
         const tabIds = await browser.getWindowHandles();
 
         await browser.switchToWindow(tabIds[0]);
-        
+
         return Promise.mapSeries(tabIds, async (id, ind) => {
             if (ind === tabIds.length - 1) {
                 return browser;
