@@ -15,17 +15,18 @@ module.exports = (hermione, opts = {}) => {
 
     async function closeTabs(browser) {
         const tabIds = await browser.getWindowHandles();
+        const reversedTabIds = tabIds.reverse(); // used in order to correctly close tabs in native browser apps
 
-        await browser.switchToWindow(tabIds[0]);
+        if (reversedTabIds.length <= 1) {
+            return;
+        }
 
-        return Promise.mapSeries(tabIds, async (id, ind) => {
-            if (ind === tabIds.length - 1) {
-                return browser;
+        await Promise.mapSeries(reversedTabIds, async (id, ind) => {
+            await browser.switchToWindow(reversedTabIds[ind]);
+
+            if (ind !== reversedTabIds.length - 1) {
+                await browser.closeWindow();
             }
-
-            await browser.closeWindow();
-
-            return browser.switchToWindow(tabIds[ind + 1]);
         });
     }
 
@@ -38,8 +39,8 @@ module.exports = (hermione, opts = {}) => {
     hermione.on(hermione.events.AFTER_TESTS_READ, (collection) => {
         collection.eachRootSuite((root, browserId) => {
             if (shouldClose(browserId)) {
-                root.beforeEach(function() {
-                    return closeTabs(this.browser);
+                root.beforeEach(async function() {
+                    await closeTabs(this.browser);
                 });
             }
         });

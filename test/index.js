@@ -21,10 +21,17 @@ describe('hermione tabs closer', () => {
     const mkBrowser = () => {
         return {
             switchToWindow: sandbox.stub().resolves(),
-            getWindowHandles: sandbox.stub().resolves(['tab1', 'tab2', 'tab3']),
+            getWindowHandles: sandbox.stub().resolves(['default-tab']),
             closeWindow: sandbox.stub().resolves()
         };
     };
+
+    const callBeforeEachCb = async ({browser, suite}) => {
+        const beforeEachHook = suite.beforeEach.lastCall.args[0];
+        await beforeEachHook.call({browser});
+    };
+
+    afterEach(() => sandbox.restore());
 
     it('should do nothing in master process', () => {
         const hermione = mkHermioneStub();
@@ -58,27 +65,82 @@ describe('hermione tabs closer', () => {
         plugin(hermione);
 
         const suite = {beforeEach: sinon.spy().named('beforeEach')};
-        hermione.emit(events.AFTER_TESTS_READ, {
-            eachRootSuite: (cb) => cb(suite, 'bro1')
-        });
+        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, 'bro1')});
 
         assert.notCalled(suite.beforeEach);
     });
 
-    it('should close all opened tabs except last tab', async () => {
-        const hermione = mkHermioneStub();
-        plugin(hermione);
+    [
+        {
+            name: 'there are no opened tabs',
+            tabs: []
+        },
+        {
+            name: 'only one tab is opened',
+            tabs: ['tab1']
+        }
+    ].forEach(({name, tabs}) => {
+        it(`should not close tabs if ${name}`, async () => {
+            const hermione = mkHermioneStub();
+            const browser = mkBrowser();
+            const suite = {beforeEach: sinon.spy().named('beforeEach')};
 
-        const suite = {beforeEach: sinon.spy().named('beforeEach')};
-        const browser = mkBrowser();
-        hermione.emit(events.AFTER_TESTS_READ, {
-            eachRootSuite: (cb) => cb(suite, browser)
+            browser.getWindowHandles.resolves(tabs);
+
+            plugin(hermione);
+            hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, 'bro1')});
+
+            await callBeforeEachCb({browser, suite});
+
+            assert.notCalled(browser.closeWindow);
         });
+    });
 
-        const beforeEachHook = suite.beforeEach.lastCall.args[0];
-        await beforeEachHook.call({browser});
+    it('should switch to last tab before start to close tabs', async () => {
+        const hermione = mkHermioneStub();
+        const browser = mkBrowser();
+        const suite = {beforeEach: sinon.spy().named('beforeEach')};
 
-        assert.match(browser.closeWindow.callCount, 2);
-        assert.match(browser.switchToWindow.args [['tab1'], ['tab2'], ['tab3']]);
+        browser.getWindowHandles.resolves(['tab1', 'tab2']);
+
+        plugin(hermione);
+        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
+
+        await callBeforeEachCb({browser, suite});
+
+        assert.callOrder(browser.switchToWindow.withArgs('tab2'), browser.closeWindow);
+    });
+
+    it('should switch to first tab after close other tabs', async () => {
+        const hermione = mkHermioneStub();
+        const browser = mkBrowser();
+        const suite = {beforeEach: sinon.spy().named('beforeEach')};
+
+        browser.getWindowHandles.resolves(['tab1', 'tab2']);
+
+        plugin(hermione);
+        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
+
+        await callBeforeEachCb({browser, suite});
+
+        assert.callOrder(browser.closeWindow, browser.switchToWindow.withArgs('tab1'));
+    });
+
+    it('should close all opened tabs except first tab', async () => {
+        const hermione = mkHermioneStub();
+        const browser = mkBrowser();
+        const suite = {beforeEach: sinon.spy().named('beforeEach')};
+
+        browser.getWindowHandles.resolves(['tab1', 'tab2']);
+
+        plugin(hermione);
+        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
+
+        await callBeforeEachCb({browser, suite});
+
+        assert.calledOnce(browser.closeWindow);
+        assert.calledTwice(browser.switchToWindow);
+        assert.calledWith(browser.switchToWindow.firstCall, 'tab2');
+        assert.calledWith(browser.switchToWindow.secondCall, 'tab1');
     });
 });
