@@ -1,7 +1,7 @@
 {
-  "name": "hermione-tabs-closer",
-  "version": "1.0.1",
-  "description": "plugin for hermione which closes opened tabs from previous tests in a browser",
+  "name": "@testplane/tabs-closer",
+  "version": "0.0.1",
+  "description": "plugin for Testplane which closes opened tabs from previous tests in a browser",
   "main": "index.js",
   "scripts": {
     "test": "npm run test-unit && npm run lint",
@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gemini-testing/hermione-tabs-closer.git"
+    "url": "git+https://github.com/gemini-testing/testplane-tabs-closer.git"
   },
   "engines": {
     "node": ">= 12.0.0"
@@ -32,8 +32,5 @@
     "eslint-config-gemini-testing": "^2.7.0",
     "mocha": "^2.4.5",
     "sinon": "^2.3.8"
-  },
-  "peerDependencies": {
-    "hermione": ">=4.0.0"
   }
 }

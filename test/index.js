@@ -5,17 +5,17 @@ const EventEmitter = require('events');
 
 const events = {AFTER_TESTS_READ: 'after_tests_read'};
 
-describe('hermione tabs closer', () => {
+describe('testplane tabs closer', () => {
     const sandbox = sinon.sandbox.create();
 
-    const mkHermioneStub = (config) => {
-        const hermione = new EventEmitter();
+    const mkTestplaneStub = (config) => {
+        const testplane = new EventEmitter();
 
-        hermione.events = events;
-        hermione.config = config || {forBrowser: () => ({testsPerSession: 10})};
-        hermione.isWorker = () => true;
+        testplane.events = events;
+        testplane.config = config || {forBrowser: () => ({testsPerSession: 10})};
+        testplane.isWorker = () => true;
 
-        return hermione;
+        return testplane;
     };
 
     const mkBrowser = () => {
@@ -34,23 +34,23 @@ describe('hermione tabs closer', () => {
     afterEach(() => sandbox.restore());
 
     it('should do nothing in master process', () => {
-        const hermione = mkHermioneStub();
-        hermione.isWorker = () => false;
+        const testplane = mkTestplaneStub();
+        testplane.isWorker = () => false;
 
-        plugin(hermione);
+        plugin(testplane);
 
         const eachRootSuite = sinon.spy().named('eachRootSuite');
-        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite});
+        testplane.emit(events.AFTER_TESTS_READ, {eachRootSuite});
 
         assert.notCalled(eachRootSuite);
     });
 
     it('should not add hook for browsers which not match to RegExp', () => {
-        const hermione = mkHermioneStub();
-        plugin(hermione, {browsers: /bro2/});
+        const testplane = mkTestplaneStub();
+        plugin(testplane, {browsers: /bro2/});
 
         const suite = {beforeEach: sinon.spy().named('beforeEach')};
-        hermione.emit(events.AFTER_TESTS_READ, {
+        testplane.emit(events.AFTER_TESTS_READ, {
             eachRootSuite: (cb) => cb(suite, 'bro1')
         });
 
@@ -58,14 +58,14 @@ describe('hermione tabs closer', () => {
     });
 
     it('should not add hook for browsers with one test per session', () => {
-        const hermione = mkHermioneStub({
+        const testplane = mkTestplaneStub({
             forBrowser: sandbox.stub().withArgs('bro1').returns({testsPerSession: 1})
         });
 
-        plugin(hermione);
+        plugin(testplane);
 
         const suite = {beforeEach: sinon.spy().named('beforeEach')};
-        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, 'bro1')});
+        testplane.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, 'bro1')});
 
         assert.notCalled(suite.beforeEach);
     });
@@ -81,14 +81,14 @@ describe('hermione tabs closer', () => {
         }
     ].forEach(({name, tabs}) => {
         it(`should not close tabs if ${name}`, async () => {
-            const hermione = mkHermioneStub();
+            const testplane = mkTestplaneStub();
             const browser = mkBrowser();
             const suite = {beforeEach: sinon.spy().named('beforeEach')};
 
             browser.getWindowHandles.resolves(tabs);
 
-            plugin(hermione);
-            hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, 'bro1')});
+            plugin(testplane);
+            testplane.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, 'bro1')});
 
             await callBeforeEachCb({browser, suite});
 
@@ -97,14 +97,14 @@ describe('hermione tabs closer', () => {
     });
 
     it('should switch to last tab before start to close tabs', async () => {
-        const hermione = mkHermioneStub();
+        const testplane = mkTestplaneStub();
         const browser = mkBrowser();
         const suite = {beforeEach: sinon.spy().named('beforeEach')};
 
         browser.getWindowHandles.resolves(['tab1', 'tab2']);
 
-        plugin(hermione);
-        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
+        plugin(testplane);
+        testplane.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
 
         await callBeforeEachCb({browser, suite});
 
@@ -112,14 +112,14 @@ describe('hermione tabs closer', () => {
     });
 
     it('should switch to first tab after close other tabs', async () => {
-        const hermione = mkHermioneStub();
+        const testplane = mkTestplaneStub();
         const browser = mkBrowser();
         const suite = {beforeEach: sinon.spy().named('beforeEach')};
 
         browser.getWindowHandles.resolves(['tab1', 'tab2']);
 
-        plugin(hermione);
-        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
+        plugin(testplane);
+        testplane.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
 
         await callBeforeEachCb({browser, suite});
 
@@ -127,14 +127,14 @@ describe('hermione tabs closer', () => {
     });
 
     it('should close all opened tabs except first tab', async () => {
-        const hermione = mkHermioneStub();
+        const testplane = mkTestplaneStub();
         const browser = mkBrowser();
         const suite = {beforeEach: sinon.spy().named('beforeEach')};
 
         browser.getWindowHandles.resolves(['tab1', 'tab2']);
 
-        plugin(hermione);
-        hermione.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
+        plugin(testplane);
+        testplane.emit(events.AFTER_TESTS_READ, {eachRootSuite: (cb) => cb(suite, browser)});
 
         await callBeforeEachCb({browser, suite});
 
