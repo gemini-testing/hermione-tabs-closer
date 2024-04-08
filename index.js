@@ -3,8 +3,8 @@
 const Promise = require('bluebird');
 const parseConfig = require('./config');
 
-module.exports = (hermione, opts = {}) => {
-    if (!hermione.isWorker()) {
+module.exports = (testplane, opts = {}) => {
+    if (!testplane.isWorker()) {
         return;
     }
 
@@ -31,12 +31,12 @@ module.exports = (hermione, opts = {}) => {
     }
 
     function shouldClose(browserId) {
-        const browserConf = hermione.config.forBrowser(browserId);
+        const browserConf = testplane.config.forBrowser(browserId);
 
         return pluginConfig.browsers.test(browserId) && browserConf.testsPerSession !== 1;
     }
 
-    hermione.on(hermione.events.AFTER_TESTS_READ, (collection) => {
+    testplane.on(testplane.events.AFTER_TESTS_READ, (collection) => {
         collection.eachRootSuite((root, browserId) => {
             if (shouldClose(browserId)) {
                 root.beforeEach(async function() {

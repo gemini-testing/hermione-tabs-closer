@@ -3,8 +3,8 @@
 const _ = require('lodash');
 const {root, section, option} = require('gemini-configparser');
 
-const ENV_PREFIX = 'hermione_tabs_closer_';
-const CLI_PREFIX = '--hermione-tabs-closer-';
+const ENV_PREFIX = 'testplane_tabs_closer_';
+const CLI_PREFIX = '--testplane-tabs-closer-';
 
 const getParser = () => {
     return root(section({
